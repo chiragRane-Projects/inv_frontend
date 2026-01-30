@@ -32,13 +32,18 @@ This project follows **backend-first architecture**, **production ML practices**
 
 ## 🛠️ Tech Stack
 
+## Frontend
+- **NextJS** - Full-stack React framework using the App Router for routing, layouts, and server components.
+- **Tailwind CSS** - Utility-first CSS framework for fast, consistent, and scalable UI styling.
+- **Shadcn UI** - Accessible, customizable component library built on Radix UI, improving code readability and reducing boilerplate.  
+
 ### Backend
 - **FastAPI** – High-performance REST API framework
 - **SQLAlchemy** – ORM for database interaction
 - **PostgreSQL** – Relational database
 - **Alembic** – Database migrations
 - **JWT (python-jose)** – Authentication & authorization
-- **Passlib (bcrypt)** – Secure password hashing
+- **Passlib (argon2)** – Secure password hashing
 - **dotenv** – Environment variable management
 
 ### Machine Learning & Data Science
@@ -155,7 +160,7 @@ npm run dev
 
 ---
 
-## </> Frontend repository 
+## </> Backend repository 
 - **Backend:** [Backend Link](https://github.com/chiragRane-Projects/inv_backend.git) 
 
 ---
