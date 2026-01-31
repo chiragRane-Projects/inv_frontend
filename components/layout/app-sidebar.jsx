@@ -46,7 +46,6 @@ const getNavItems = (role) => {
 
   if (role === 'manager') {
     return [
-      ...baseItems,
       { name: "Inventory", href: "/dashboard/inventory", icon: Boxes },
       { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
       { name: "ML Insights", href: "/dashboard/ml", icon: Brain },
@@ -56,7 +55,7 @@ const getNavItems = (role) => {
 
   if (role === 'delivery') {
     return [
-      ...baseItems,
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Deliveries", href: "/dashboard/deliveries", icon: Truck },
     ]
   }

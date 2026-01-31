@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock, CheckCircle, Package, Navigation } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { MapPin, Clock, CheckCircle, Package, Navigation, Eye } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
@@ -12,6 +15,7 @@ import { toast } from 'sonner'
 function DeliveriesPage() {
   const [deliveries, setDeliveries] = useState([])
   const [warehouses, setWarehouses] = useState([])
+  const [selectedDelivery, setSelectedDelivery] = useState(null)
   const [loading, setLoading] = useState(true)
   const { token, user } = useAuth()
 
@@ -223,6 +227,22 @@ function DeliveriesPage() {
                   }}>
                     View Details
                   </Button>
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedDelivery(delivery)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        Update Status
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-[400px] p-0">
+                      <SheetHeader className="px-6 py-4 border-b">
+                        <SheetTitle>Update Delivery Status</SheetTitle>
+                      </SheetHeader>
+                      <div className="px-6 py-4">
+                        <DeliveryStatusSheet delivery={selectedDelivery} onUpdate={fetchDeliveries} />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
               </CardContent>
             </Card>
@@ -230,6 +250,53 @@ function DeliveriesPage() {
           })
         )}
       </div>
+    </div>
+  )
+}
+
+function DeliveryStatusSheet({ delivery, onUpdate }) {
+  const [status, setStatus] = useState(delivery?.status || '')
+  const { token } = useAuth()
+
+  const handleStatusUpdate = async () => {
+    try {
+      await apiFetch(`/orders/${delivery.id}/status/${status}`, { method: 'PUT' }, token)
+      toast.success('Status updated successfully')
+      onUpdate()
+    } catch (error) {
+      toast.error('Failed to update status')
+    }
+  }
+
+  if (!delivery) return null
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold mb-2">Order #{delivery.id}</h3>
+        <p className="text-sm text-muted-foreground">
+          {delivery.order_date ? new Date(delivery.order_date).toLocaleDateString() : 'No date'}
+        </p>
+      </div>
+      
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Update Status</Label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="assigned">Assigned</SelectItem>
+            <SelectItem value="picked_up">Picked Up</SelectItem>
+            <SelectItem value="in_transit">In Transit</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <Button onClick={handleStatusUpdate} className="w-full">
+        Update Status
+      </Button>
     </div>
   )
 }
