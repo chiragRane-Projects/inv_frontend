@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Package, Search, Edit, DollarSign } from 'lucide-react'
+import { Plus, Package, Search, Edit, DollarSign, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
@@ -147,9 +147,10 @@ function ProductsPage() {
                   View Details
                 </Button>
                 {canCreateProducts && (
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <EditProductDialog product={product} onSuccess={fetchProducts} />
+                    <DeleteProductButton product={product} onSuccess={fetchProducts} />
+                  </>
                 )}
               </div>
             </CardContent>
@@ -293,6 +294,173 @@ function CreateProductDialog({ onSuccess }) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function EditProductDialog({ product, onSuccess }) {
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState({
+    name: product.name,
+    category: product.category,
+    unit_price: product.unit_price.toString()
+  })
+  const [products, setProducts] = useState([])
+  const [newCategory, setNewCategory] = useState('')
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const { token } = useAuth()
+
+  useEffect(() => {
+    if (open) {
+      fetchProducts()
+    }
+  }, [open])
+
+  const fetchProducts = async () => {
+    try {
+      const data = await apiFetch('/products/', {}, token)
+      setProducts(data)
+    } catch (error) {
+      console.error('Failed to fetch products for categories')
+    }
+  }
+
+  const existingCategories = [...new Set(products.map(p => p.category))]
+
+  const handleCategoryChange = (value) => {
+    if (value === 'new') {
+      setShowNewCategory(true)
+      setFormData({...formData, category: ''})
+    } else {
+      setShowNewCategory(false)
+      setFormData({...formData, category: value})
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const categoryValue = showNewCategory ? newCategory : formData.category
+    if (!categoryValue) {
+      toast.error('Please select or enter a category')
+      return
+    }
+    
+    try {
+      await apiFetch(`/products/${product.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: formData.name,
+          category: categoryValue,
+          unit_price: parseFloat(formData.unit_price)
+        })
+      }, token)
+      
+      toast.success('Product updated successfully')
+      setOpen(false)
+      onSuccess()
+    } catch (error) {
+      toast.error(`Failed to update product: ${error.message}`)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Product</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Product Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={formData.category} onValueChange={handleCategoryChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select or create category" />
+              </SelectTrigger>
+              <SelectContent>
+                {existingCategories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+                <SelectItem value="new">+ Create New Category</SelectItem>
+              </SelectContent>
+            </Select>
+            {showNewCategory && (
+              <Input
+                className="mt-2"
+                placeholder="Enter new category name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                required
+              />
+            )}
+          </div>
+          
+          <div>
+            <Label htmlFor="unit_price">Unit Price ($)</Label>
+            <Input
+              id="unit_price"
+              type="number"
+              step="0.01"
+              value={formData.unit_price}
+              onChange={(e) => setFormData({...formData, unit_price: e.target.value})}
+              required
+            />
+          </div>
+          
+          <Button type="submit" className="w-full">Update Product</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DeleteProductButton({ product, onSuccess }) {
+  const [loading, setLoading] = useState(false)
+  const { token } = useAuth()
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${product.name}"?`)) return
+    
+    setLoading(true)
+    try {
+      await apiFetch(`/products/${product.id}`, {
+        method: 'DELETE'
+      }, token)
+      
+      toast.success('Product deleted successfully')
+      onSuccess()
+    } catch (error) {
+      toast.error(`Failed to delete product: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={handleDelete}
+      disabled={loading}
+      className="text-red-600 hover:text-red-700"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   )
 }
 

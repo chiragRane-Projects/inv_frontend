@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Package, AlertTriangle, TrendingUp, Search } from 'lucide-react'
+import { Plus, Package, AlertTriangle, TrendingUp, Search, Edit, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'sonner'
@@ -171,6 +171,7 @@ function InventoryPage() {
                   <th className="text-right p-2">Unit Price</th>
                   <th className="text-right p-2">Total Value</th>
                   <th className="text-center p-2">Status</th>
+                  <th className="text-center p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +198,12 @@ function InventoryPage() {
                       ) : (
                         <Badge variant="default" className="bg-green-100 text-green-800">Good</Badge>
                       )}
+                    </td>
+                    <td className="p-2 text-center">
+                      <div className="flex gap-1 justify-center">
+                        <EditInventoryDialog item={item} onSuccess={fetchData} />
+                        <DeleteInventoryButton item={item} onSuccess={fetchData} />
+                      </div>
                     </td>
                   </tr>
                   )
@@ -341,6 +348,168 @@ function AddInventoryDialog({ onSuccess }) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function EditInventoryDialog({ item, onSuccess }) {
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState({
+    warehouse_id: item.warehouse_id.toString(),
+    product_id: item.product_id.toString(),
+    quantity: item.quantity.toString(),
+    reorder_level: item.reorder_level.toString()
+  })
+  const [products, setProducts] = useState([])
+  const [warehouses, setWarehouses] = useState([])
+  const { token } = useAuth()
+
+  useEffect(() => {
+    if (open) {
+      fetchOptions()
+    }
+  }, [open])
+
+  const fetchOptions = async () => {
+    try {
+      const [productsData, warehousesData] = await Promise.all([
+        apiFetch('/products/', {}, token),
+        apiFetch('/warehouses/', {}, token)
+      ])
+      setProducts(productsData)
+      setWarehouses(warehousesData)
+    } catch (error) {
+      toast.error('Failed to fetch options')
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        warehouse_id: parseInt(formData.warehouse_id),
+        product_id: parseInt(formData.product_id),
+        quantity: parseInt(formData.quantity),
+        reorder_level: parseInt(formData.reorder_level)
+      }
+      
+      await apiFetch(`/inventory/${item.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      }, token)
+      
+      toast.success('Inventory updated successfully')
+      setOpen(false)
+      onSuccess()
+    } catch (error) {
+      toast.error(`Failed to update inventory: ${error.message}`)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Inventory Item</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="warehouse">Warehouse</Label>
+            <Select value={formData.warehouse_id} onValueChange={(value) => setFormData({...formData, warehouse_id: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select warehouse" />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map(warehouse => (
+                  <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
+                    {warehouse.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="product">Product</Label>
+            <Select value={formData.product_id} onValueChange={(value) => setFormData({...formData, product_id: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select product" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map(product => (
+                  <SelectItem key={product.id} value={product.id.toString()}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="quantity">Quantity</Label>
+            <Input
+              id="quantity"
+              type="number"
+              value={formData.quantity}
+              onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="reorder_level">Reorder Level</Label>
+            <Input
+              id="reorder_level"
+              type="number"
+              value={formData.reorder_level}
+              onChange={(e) => setFormData({...formData, reorder_level: e.target.value})}
+              required
+            />
+          </div>
+          
+          <Button type="submit" className="w-full">Update Inventory</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DeleteInventoryButton({ item, onSuccess }) {
+  const [loading, setLoading] = useState(false)
+  const { token } = useAuth()
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this inventory item?')) return
+    
+    setLoading(true)
+    try {
+      await apiFetch(`/inventory/${item.id}`, {
+        method: 'DELETE'
+      }, token)
+      
+      toast.success('Inventory item deleted successfully')
+      onSuccess()
+    } catch (error) {
+      toast.error(`Failed to delete inventory: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={handleDelete}
+      disabled={loading}
+      className="text-red-600 hover:text-red-700"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   )
 }
 export default withRoleAccess(InventoryPage, ['superadmin', 'manager'])
